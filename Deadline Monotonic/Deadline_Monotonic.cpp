@@ -26,11 +26,14 @@ struct Job {
     int Dline;          // thời điểm deadline tương đối = D
 };
 
-// Comparator để ưu tiên job có deadline nhỏ hơn
+// Comparator DM: ưu tiên D nhỏ trước, nếu D bằng thì deadlineTime nhỏ trước,
+// nếu vẫn bằng thì id nhỏ trước
 struct CmpDeadline {
     bool operator()(const Job &a, const Job &b) const {
         if (a.Dline != b.Dline)
             return a.Dline > b.Dline;
+        if (a.deadlineTime != b.deadlineTime)
+            return a.deadlineTime > b.deadlineTime;
         return a.id > b.id;
     }
 };
