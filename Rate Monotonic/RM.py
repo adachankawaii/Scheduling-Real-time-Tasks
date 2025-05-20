@@ -1,10 +1,3 @@
-# Tìm BSCNN (LCM)
-def find_lcm(x, y):
-    a, b = max(x, y), min(x, y)
-    while b:
-        a, b = b, a % b
-    return x * y // a
-
 # Lập lịch RM
 def rm_schedule(tasks, duration=None):
     # Sắp xếp tasks theo chu kỳ tăng dần (ưu tiên cao nhất là task có chu kỳ nhỏ nhất)
