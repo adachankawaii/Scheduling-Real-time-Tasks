@@ -1,5 +1,5 @@
 import tkinter as tk
-from tkinter import ttk
+from tkinter import ttk, filedialog
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 import matplotlib.colors as mcolors
@@ -38,6 +38,11 @@ class SchedulerApp:
                                             bg=BTN_BG, fg=LEFT_FG_COLOR, activebackground=BTN_ACTIVE_BG)
         self.remove_task_button.pack(pady=5)
 
+        # Load from file button
+        self.load_button = tk.Button(self.left_frame, text="Load Tasks", command=self.load_tasks,
+                                    bg=BTN_BG, fg=LEFT_FG_COLOR, activebackground=BTN_ACTIVE_BG)
+        self.load_button.pack(pady=5)
+
         # Scheduling algorithm buttons
         self.edf_button = tk.Button(self.left_frame, text="EDF Scheduler", command=self.schedule_edf,
                                      bg=BTN_BG, fg=LEFT_FG_COLOR, activebackground=BTN_ACTIVE_BG)
@@ -61,6 +66,39 @@ class SchedulerApp:
 
         self.canvas = None
 
+
+    def clear_tasks(self):
+        # remove all existing entries
+        while self.task_entries:
+            self.remove_task_entry()
+
+    def load_tasks(self):
+        path = filedialog.askopenfilename(title="Select task file",
+                                        filetypes=[("Text files","*.txt"), ("All files","*.*")])
+        if not path:
+            return
+        self.clear_tasks()
+        with open(path, 'r') as f:
+            for line in f:
+                line = line.strip()
+                if not line or line.startswith('#'):
+                    continue
+                # split on space or comma
+                parts = line.replace(',', ' ').split()
+                if len(parts) != 3:
+                    continue
+                try:
+                    c, d, p = map(int, parts)
+                except ValueError:
+                    continue
+                # add a new row and set the entries
+                self.add_task_entry()
+                _, exec_ent, dead_ent, period_ent = self.task_entries[-1]
+                exec_ent.insert(0, str(c))
+                dead_ent.insert(0, str(d))
+                period_ent.insert(0, str(p))
+
+
     def add_task_entry(self):
         frame = tk.Frame(self.left_frame, bg=LEFT_BG_COLOR)
         frame.pack(pady=3)
@@ -79,9 +117,23 @@ class SchedulerApp:
         period_entry = tk.Entry(frame, width=10, bg=ENTRY_BG, fg=LEFT_FG_COLOR, insertbackground=LEFT_FG_COLOR)
         period_entry.pack(side=tk.LEFT)
 
+        # nút X để xóa riêng task này
+        delete_btn = tk.Button(frame, text="X",
+                                command=lambda f=frame: self.remove_specific_task(f),
+                                bg=BTN_BG, fg=LEFT_FG_COLOR, activebackground=BTN_ACTIVE_BG)
+        delete_btn.pack(side=tk.LEFT, padx=5)
+
         self.task_entries.append((frame, exec_entry, deadline_entry, period_entry))
         self.task_count += 1
 
+    def remove_specific_task(self, frame):
+       """Xóa entry tương ứng với frame được truyền vào."""
+       for idx, (f, _, _, _) in enumerate(self.task_entries):
+           if f is frame:
+               f.destroy()
+               self.task_entries.pop(idx)
+               break
+           
     def remove_task_entry(self):
         if self.task_entries:
             last = self.task_entries.pop()
