@@ -25,25 +25,25 @@ Input Format:
 1. The program first asks for the number of tasks (maximum: 10).
 2. For each task, the following information is entered interactively:
    - Task ID (a single uppercase character, e.g., A, B, C)
-   - Arrival time (integer)
    - Execution time (integer)
    - Deadline (integer)
+   - Period (integer)
 
 Example Input:
 --------------
 Enter number of tasks: 2
 
-1:
-Task ID (A-Z): A
-Arrival time: 0
-Exec time: 5
-Deadline: 10
+1: 
+- Task ID (A-Z): A
+- Exec time: 5
+- Deadline: 10
+- Period: 20
 
 2:
-Task ID (A-Z): B
-Arrival time: 1
-Exec time: 2
-Deadline: 4
+- Task ID (A-Z): B
+- Exec time: 2
+- Deadline: 4
+- Period : 10
 
 Output:
 -------
@@ -56,12 +56,7 @@ Example Output:
 Gantt Chart:
  A A B B A A A _ _
 
->> Completed Tasks:
-Task A: Start = 0, Finish = 7, Deadline = 10
-Task B: Start = 2, Finish = 4, Deadline = 4
 
->> Missed Deadline Tasks:
-None
 
 How to Compile and Run:
 ------------------------

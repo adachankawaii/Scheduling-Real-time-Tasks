@@ -1,170 +1,121 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
 #include <limits.h>
 
-#define MAX_TASKS 10
-#define MAX_TIME 100
+#define MAX_TASKS 10 // So luong tien trinh toi da
+#define START_TIME 1 // Thoi gian bat dau lap lich
+#define END_TIME 15  // Thoi gian ket thuc lap lich
 
-// Cau truc luu thong tin cua mot tien trinh
+// Cau truc mo ta mot tien trinh
 typedef struct {
-    char id;           // Ten tien trinh (vi du: 'A', 'B', ...)
-    int arrival;       // Thoi diem den
-    int exec_time;     // Thoi gian thuc thi
-    int deadline;      // Han deadline
-    int remaining;     // Thoi gian con lai can thuc thi
-    int completed;     // 0: chua xong, 1: da xong, -1: bi tre deadline
-    int start_time;    // Thoi diem bat dau thuc thi
+    char id;            // Ten tien trinh
+    int exec_time;      // Thoi gian thuc thi
+    int deadline;       // Deadline tuong doi
+    int period;         // Chu ky lap lai
+    int next_release;   // Thoi diem release tiep theo
+    int remaining;      // Thoi gian con lai de chay
+    int abs_deadline;   // Deadline tuyet doi cua lan hien tai
+    int active;         // Co ton tai hay khong (1: ton tai, 0: da xoa)
 } Task;
 
-// Ham tinh do long leo (laxity)
+// Ham tinh do long leo (laxity) cua tien trinh
 int laxity(Task* task, int current_time) {
-    return task->deadline - current_time - task->remaining;
+    return task->abs_deadline - current_time - task->remaining;
 }
 
-// Kiem tra tat ca tien trinh da hoan thanh chua
-int all_done(Task tasks[], int n) {
-    for (int i = 0; i < n; i++) {
-        if (tasks[i].completed == 0) return 0;  // Neu con tien trinh chua xong thi tra ve 0
-    }
-    return 1;  // Tat ca da xong
-}
-
-// Ham lap lich theo thuat toan LLF (Least Laxity First)
+// Thuat toan lap lich LLF
 void llf_scheduler(Task tasks[], int n) {
-    int time = 0;  // Bien dem thoi gian
-    char gantt_chart[MAX_TIME];  // Luu lai Gantt chart
-    int gantt_len = 0;  // Do dai Gantt chart
+    char gantt[END_TIME - START_TIME + 1]; // Mang ghi Gantt chart
+    int gantt_idx = 0;
 
-    while (!all_done(tasks, n) && time < MAX_TIME) {
-        int min_laxity = INT_MAX;  // Do long leo nho nhat
-        int selected = -1;         // Chi so tien trinh duoc chon
-
-        // Duyet tat ca tien trinh
+    for (int time = START_TIME; time <= END_TIME; time++) {
+        // Kiem tra release cac tien trinh moi
         for (int i = 0; i < n; i++) {
-            // Neu tien trinh da den va chua hoan thanh
-            if (tasks[i].arrival <= time && tasks[i].completed == 0) {
-                int lax = laxity(&tasks[i], time);  // Tinh laxity
-                if (lax < 0) {
-                    // Neu laxity < 0 thi danh dau la bi tre deadline
-                    tasks[i].completed = -1;
+            if (time - 1 >= tasks[i].next_release) { // Neu den thoi diem release
+                tasks[i].remaining = tasks[i].exec_time; // Reset thoi gian chay
+                tasks[i].abs_deadline = time - 1 + tasks[i].deadline; // Deadline tuyet doi
+                tasks[i].active = 1; // Danh dau tien trinh ton tai
+                tasks[i].next_release += tasks[i].period; // Cap nhat release lan sau
+            }
+        }
+
+        int min_lax = INT_MAX; // Gia tri laxity nho nhat
+        int selected = -1; // Luu tien trinh duoc chon
+
+        // Tim tien trinh co laxity nho nhat
+        for (int i = 0; i < n; i++) {
+            if (tasks[i].active && tasks[i].remaining > 0) {
+                int lax = laxity(&tasks[i], time - 1); // Tinh laxity
+                if (lax < 0) { // Neu tien trinh da tre deadline
+                    tasks[i].active = 0; // Vo hieu tien trinh
+                    tasks[i].remaining = 0; // Xoa thoi gian con lai
                     continue;
                 }
-                // Chon tien trinh co laxity nho nhat
-                if (lax < min_laxity) {
-                    min_laxity = lax;
+                if (lax < min_lax) { // Chon tien trinh co laxity nho nhat
+                    min_lax = lax;
                     selected = i;
                 }
             }
         }
 
-        // Neu khong co tien trinh nao de chay thi CPU nhan
+        // Lap lich tien trinh duoc chon
         if (selected == -1) {
-            gantt_chart[gantt_len++] = '_'; // Danh dau idle
-            time++;
-            continue;
+            gantt[gantt_idx++] = '_'; // CPU idle neu khong co tien trinh nao chay
+        } else {
+            gantt[gantt_idx++] = tasks[selected].id; // Ghi nhan tien trinh chay
+            tasks[selected].remaining--; // Giam thoi gian chay cua tien trinh
+            if (tasks[selected].remaining == 0) {
+                tasks[selected].active = 0; // Danh dau tien trinh hoan thanh
+            }
         }
-
-        // Ghi lai thoi diem bat dau cua tien trinh (neu chua co)
-        if (tasks[selected].start_time == -1)
-            tasks[selected].start_time = time;
-
-        // Thuc thi tien trinh trong 1 don vi thoi gian
-        tasks[selected].remaining--;
-        gantt_chart[gantt_len++] = tasks[selected].id;
-
-        // Neu tien trinh thuc thi xong thi danh dau hoan thanh
-        if (tasks[selected].remaining == 0)
-            tasks[selected].completed = 1;
-
-        time++;
     }
 
     // In Gantt chart
-    printf("\nGantt Chart:\n");
-    for (int i = 0; i < gantt_len; i++) {
-        printf(" %c", gantt_chart[i]);
+    printf("\n>> Gantt Chart (Time %d to %d):\n", START_TIME, END_TIME);
+    for (int i = START_TIME; i <= END_TIME; i++) {
+        printf(" %2d", i);
     }
     printf("\n");
-
-    // In thong tin cac tien trinh hoan thanh
-    printf("\n>> Completed Tasks:\n");
-    for (int i = 0; i < n; i++) {
-        if (tasks[i].completed == 1) {
-            printf("Task %c: Start = %d, Finish = %d, Deadline = %d\n",
-                   tasks[i].id,
-                   tasks[i].start_time,
-                   tasks[i].start_time + tasks[i].exec_time,
-                   tasks[i].deadline);
-        }
+    for (int i = 0; i < gantt_idx; i++) {
+        printf("  %c", gantt[i]);
     }
-
-    // In thong tin cac tien trinh bi tre deadline
-    printf("\n>> Missed Deadline Tasks:\n");
-    for (int i = 0; i < n; i++) {
-        if (tasks[i].completed == -1) {
-            printf("Task %c: Arrival = %d, Exec = %d, Deadline = %d\n",
-                   tasks[i].id,
-                   tasks[i].arrival,
-                   tasks[i].exec_time,
-                   tasks[i].deadline);
-        }
-    }
+    printf("\n");
 }
 
-// Ham main de chay chuong trinh
+// Ham main
 int main() {
-    Task tasks[MAX_TASKS];
-    int n;
+    Task tasks[MAX_TASKS]; // Mang chua cac tien trinh
+    int n; // So tien trinh
 
     printf("Nhap so tien trinh: ");
     scanf("%d", &n);
-    getchar(); // Loai bo ky tu '\n' sau khi nhap so
 
-    if (n > MAX_TASKS) {
-        printf("So tien trinh vuot qua gioi han (%d).\n", MAX_TASKS);
+    if (n > MAX_TASKS) { // Kiem tra gioi han so tien trinh
+        printf("Vuot qua so tien trinh toi da.\n");
         return 1;
     }
 
+    // Nhap tung tien trinh
     for (int i = 0; i < n; i++) {
-	    char id;
-	    int arrival, exec_time, deadline;
-	
-	    printf("\n%d:\n", i + 1);
-	
-	    // Nhap Task ID
-	    printf("Task ID (A-Z): ");
-	    char buffer[10];
-	    fgets(buffer, sizeof(buffer), stdin); // doc ca dong
-	    id = buffer[0]; // lay ky tu dau tien
-	
-	    // Nhap Arrival
-	    printf("Arrival time: ");
-	    scanf("%d", &arrival);
-	    getchar(); // loai bo \n
-	
-	    // Nhap Exec time
-	    printf("Exec time: ");
-	    scanf("%d", &exec_time);
-	    getchar(); // loai bo \n
-	
-	    // Nhap Deadline
-	    printf("Deadline: ");
-	    scanf("%d", &deadline);
-	    getchar(); // loai bo \n
-	
-	    // Luu vao cau truc
-	    tasks[i].id = id;
-	    tasks[i].arrival = arrival;
-	    tasks[i].exec_time = exec_time;
-	    tasks[i].deadline = deadline;
-	    tasks[i].remaining = exec_time;
-	    tasks[i].completed = 0;
-	    tasks[i].start_time = -1;
-	}
+        printf("\nTien trinh %d:\n", i + 1);
+        printf("ID (A-Z): ");
+        scanf(" %c", &tasks[i].id);
+        printf("Exec time: ");
+        scanf("%d", &tasks[i].exec_time);
+        printf("Deadline: ");
+        scanf("%d", &tasks[i].deadline);
+        printf("Period: ");
+        scanf("%d", &tasks[i].period);
 
+        // Khoi tao gia tri ban dau
+        tasks[i].next_release = 0;
+        tasks[i].remaining = 0;
+        tasks[i].abs_deadline = 0;
+        tasks[i].active = 0;
+    }
+
+    // Goi ham lap lich LLF
     llf_scheduler(tasks, n);
 
     return 0;
 }
-
